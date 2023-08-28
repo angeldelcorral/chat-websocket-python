@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
+    <meta name="description" content="Chat en tiempoo Real" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximun-scale=0.85, user-scalable=no">
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='styles.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='bootstrap-4/css/bootstrap.min.css') }}" crossorigin="anonymous">
+    <link rel="stylesheet" href="{{ url_for('static', filename='bootstrap-4/css/bootstrap-theme.min.css') }}" crossorigin="anonymous">
+    <script src="{{ url_for('static', filename='bootstrap-4/js/bootstrap.min.js') }}" crossorigin="anonymous"></script>
+    <script src="https://kit.fontawesome.com/5afcdb8c55.js" crossorigin="anonymous"></script>
+
+
+    <title>Grape - Chat en Tiempo Real</title>
+</head>
+<body>
+    <h1>Grape - Chat en Tiempo Real</h3>
+    <h4>Con Python, Flask, Socket.IO y JavaScript</h2>
+        <hr>
+    <div class="container">
+        <div class="row">
+            <div class="input-group input-group-sm mb-3">
+                <div class="input-group-prepend">
+                    <span class="input-group-text" id="inputGroup-sizing-sm">Nombre</span>
+                </div>
+                <input id="username" type="text" class="form-control" aria-label="Small" aria-describedby="inputGroup-sizing-sm">
+            </div>
+        </div>
+        <div class="row">
+            <div id="messages" class="message-container">
+
+            </div>
+            <!-- <textarea id="messages" class="form-control" rows="15" readonly></textarea> -->
+            <div class="input-group mb-3">
+                <input id="message" type="text" class="form-control" placeholder="Escribe tu mensaje" aria-label="Escribe tu mensaje" aria-describedby="basic-addon2" autofocus="autofocus" onkeypress="pressEnter(event)">
+                <div class="input-group-append">
+                    <button id="send" class="btn btn-primary" type="button"><svg xmlns="http://www.w3.org/2000/svg" height="1em" viewBox="0 0 512 512"><!--! Font Awesome Free 6.4.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license (Commercial License) Copyright 2023 Fonticons, Inc. --><style>svg{fill:#ffffff}</style><path d="M16.1 260.2c-22.6 12.9-20.5 47.3 3.6 57.3L160 376V479.3c0 18.1 14.6 32.7 32.7 32.7c9.7 0 18.9-4.3 25.1-11.8l62-74.3 123.9 51.6c18.9 7.9 40.8-4.5 43.9-24.7l64-416c1.9-12.1-3.4-24.3-13.5-31.2s-23.3-7.5-34-1.4l-448 256zm52.1 25.5L409.7 90.6 190.1 336l1.2 1L68.2 285.7zM403.3 425.4L236.7 355.9 450.8 116.6 403.3 425.4z"/></svg></button>
+                </div>
+            </div>
+        </div>
+        
+    </div>
+    
+    <!-- <input id="username" type="text" placeholder="Identificate">
+    <div id="messages" class="chat-box"></div>
+    <input id="message" class="message-input" type="text" autofocus="autofocus" placeholder="Escribe tu mensaje" onkeypress="pressEnter(event)">
+    <button id="send" class="send-button" >Enviar</button> -->
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.1.2/socket.io.js"></script>
+    <script>
+        const urlApi = 'http://localhost:5000/';
+        if (!localStorage.getItem('my_id') || localStorage.getItem('my_id') == 'undefined') {
+            console.log('La variable mi_id no está seteada en el localStorage. Ejecutar función...');
+            function getUniqueId() {
+                console.log('La función se ejecutó porque mi_id no está seteada.');
+                const url = urlApi + 'get_user_id'
+                fetch(url)
+                .then(resp => resp.json()) // Convertir la respuesta a JSON
+                .then(resp => {
+                    // console.log('Datos recibidos:', resp.data);
+                    localStorage.setItem("my_id", resp.data.user_id)
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+            });
+        }
+            getUniqueId();
+        }
+        
+        
+        var socket = io();
+        
+        function sendMessage() {
+            let message = document.getElementById('message').value;
+            let user_id = localStorage.getItem("my_id")
+            let user_name = document.getElementById('username').value;
+            let dataObj = {
+                'message': message,
+                'user_id': user_id,
+                'user_name': user_name
+            }
+            if (user_name.length === 0) {
+                alert('Debes ingresar un nombre de usuario');
+                return false;
+            }else if (message.length === 0) {
+                alert('El mensaje esta vacio')
+                return false;
+            }else{
+                socket.emit('new_message', dataObj);
+            }
+            // Clear input field after sending the message to server and reloading page for demo purposes only!
+            document.getElementById('message').value = '';
+        }
+
+        function pressEnter(e) {
+            if (e.code === "Enter") {
+                e.preventDefault();
+                sendMessage()
+            }
+        }
+
+
+        document.getElementById('send').addEventListener('click', function () {
+            sendMessage()
+        });
+
+        socket.on('receive_message', function (data) {
+            let messages = document.getElementById('messages');
+            let user_id = localStorage.getItem('my_id');
+            let user_name = document.getElementById('username');
+            if (user_id === data.user_id){
+                messages.innerHTML += `<div class="alert alert-success recipient" role="alert"><p>You: ${data.time}</p><h5 class="alert-heading">${data.message}</h5></div>`;
+                // messages.innerHTML += '<div class="alert alert-success recipient" role><p>You :  </p> <span>' + data.message + '</span></div>';
+            }else{
+                messages.innerHTML += `<div class="alert alert-primary sender" role="alert"><p>${data.user_name}: ${data.time}</p><h5 class="alert-heading">${data.message}</h5></div>`;
+                // messages.innerHTML += `<div class="alert alert-primary sender"><p>${data.user_name} : </p>  <span>`+ data.message + '</span></div>';
+            }
+        });
+
+        // function to get the client public IP
+        // function getIP(json) {
+        //     let clientIP = json.ip;
+        //     alert("Tu dirección IP es: " + clientIP);
+        // }
+
+        </script>
+        <!-- api to get de Ip -->
+        <!-- <script src="https://api.ipify.org?format=jsonp&callback=getIP"></script> -->
+</body>
+</html>
